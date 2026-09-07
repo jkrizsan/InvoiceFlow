@@ -88,6 +88,15 @@ public sealed class InitialCreate : Migration
         migrationBuilder.InsertData(
             table: "VatRates",
             columns: ["Id", "Category", "CountryCode", "Rate", "ValidFrom", "ValidTo"],
+            columnTypes:
+            [
+                "integer",
+                "integer",
+                "character(2)",
+                "numeric(5,2)",
+                "date",
+                "date"
+            ],
             values: new object[,]
             {
                 { -1, 0, "AT", 20m, new DateOnly(2026, 1, 1), null },
