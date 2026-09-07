@@ -1,0 +1,74 @@
+@api = http://localhost:8080
+@identity = http://localhost:8081
+
+### Obtain a machine-to-machine OAuth 2.0 token
+# @name token
+POST {{identity}}/realms/invoiceflow/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=invoiceflow-cli&client_secret=invoiceflow-demo-secret&grant_type=client_credentials
+
+> {% client.global.set("access_token", response.body.access_token); %}
+
+### Create a Finnish consumer invoice (25.5% VAT)
+# @name createInvoice
+POST {{api}}/api/v1/invoices
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "issueDate": "2026-09-02",
+  "dueDate": "2026-09-16",
+  "currency": "EUR",
+  "customer": {
+    "name": "Example Customer",
+    "email": "customer@example.com",
+    "address": "Example Road 2, 70100 Kuopio, Finland",
+    "countryCode": "FI",
+    "type": "Consumer"
+  },
+  "lines": [
+    {
+      "description": "Backend development",
+      "quantity": 8,
+      "unitPrice": 75,
+      "vatCategory": "Standard"
+    }
+  ],
+  "notes": "Thank you for your business."
+}
+
+> {%
+  client.global.set("invoice_id", response.body.id);
+  client.global.set("invoice_etag", response.headers.valueOf("etag"));
+%}
+
+### List invoices
+GET {{api}}/api/v1/invoices?page=1&pageSize=20
+Authorization: Bearer {{access_token}}
+
+### Get one invoice and its latest ETag
+# @name getInvoice
+GET {{api}}/api/v1/invoices/{{invoice_id}}
+Authorization: Bearer {{access_token}}
+
+> {% client.global.set("invoice_etag", response.headers.valueOf("etag")); %}
+
+### Issue the draft
+PATCH {{api}}/api/v1/invoices/{{invoice_id}}
+Authorization: Bearer {{access_token}}
+If-Match: {{invoice_etag}}
+Content-Type: application/json
+
+{
+  "status": "Issued"
+}
+
+> {% client.global.set("invoice_etag", response.headers.valueOf("etag")); %}
+
+### Download the PDF
+GET {{api}}/api/v1/invoices/{{invoice_id}}/pdf
+Authorization: Bearer {{access_token}}
+
+### Readiness check (no token required)
+GET {{api}}/health/ready
