@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build container
         run: docker build --tag invoiceflow-api:ci .
