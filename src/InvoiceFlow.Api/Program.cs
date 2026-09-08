@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
-using Scalar.AspNetCore;
+using Microsoft.OpenApi;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -21,9 +21,33 @@ builder.Services
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
-builder.Services.AddOpenApi();
 builder.Services.AddInvoiceFlowInfrastructure(builder.Configuration);
 builder.Services.AddScoped<DatabaseInitializer>();
+
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "InvoiceFlow API",
+        Version = "v1",
+        Description = "Invoice management API with VAT calculation and Keycloak authentication."
+    });
+
+    options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Enter the Keycloak access token."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("bearer", document)] = []
+    });
+});
 
 string issuer = builder.Configuration["Authentication:Authority"]
     ?? throw new InvalidOperationException("Authentication:Authority is missing.");
@@ -85,11 +109,22 @@ app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(options => options.WithTitle("InvoiceFlow API"));
+    app.UseSwagger();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint(
+            "/swagger/v1/swagger.json",
+            "InvoiceFlow API v1");
+
+        options.RoutePrefix = "swagger";
+        options.DocumentTitle = "InvoiceFlow API";
+    });
 }
 
-app.MapGet("/", () => Results.Redirect("/scalar/v1")).AllowAnonymous();
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"))
+    .AllowAnonymous();
+
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
